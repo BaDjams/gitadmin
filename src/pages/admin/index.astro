@@ -1,0 +1,44 @@
+---
+import Admin from "../../layouts/Admin.astro";
+import { listeGites, tableauDeBord } from "../../lib/admin";
+import { dateHeure } from "../../lib/admin-format";
+
+const [{ nouvelles, erreurs }, gites] = await Promise.all([tableauDeBord(), listeGites()]);
+---
+<Admin titre="Tableau de bord">
+  {erreurs.length > 0 && (
+    <div class="a-alerte" role="alert">
+      <strong>Synchronisation en échec</strong> : les dernières disponibilités valides restent affichées.
+      <ul>
+        {erreurs.map((e) => (
+          <li>
+            <a href={`/admin/gites/${e.gite_id}/calendrier`}>{e.gite} – {e.libelle}</a> (dernier succès : {dateHeure(e.dernier_succes)})
+          </li>
+        ))}
+      </ul>
+    </div>
+  )}
+
+  <div class="a-carte">
+    <h2>Demandes</h2>
+    <p>
+      {nouvelles === 0 ? "Aucune nouvelle demande." : <strong>{nouvelles} nouvelle{nouvelles > 1 ? "s" : ""} demande{nouvelles > 1 ? "s" : ""}</strong>}
+    </p>
+    <p class="a-actions"><a class="a-bouton" href="/admin/demandes">Voir les demandes</a></p>
+  </div>
+
+  <h2>Les gîtes</h2>
+  <ul class="a-liste a-tuiles">
+    {gites.map((g) => (
+      <li class="a-carte">
+        <h3>{g.nom} {!g.publie && <span class="a-badge alerte">masqué</span>}</h3>
+        <p class="a-meta">{g.nb_photos} photo{g.nb_photos > 1 ? "s" : ""} · <a href={`/gites/${g.slug}`} target="_blank" rel="noopener">voir la page</a></p>
+        <div class="a-actions">
+          <a class="a-bouton petit" href={`/admin/gites/${g.id}`}>Fiche</a>
+          <a class="a-bouton petit secondaire" href={`/admin/gites/${g.id}/photos`}>Photos</a>
+          <a class="a-bouton petit secondaire" href={`/admin/gites/${g.id}/calendrier`}>Calendrier</a>
+        </div>
+      </li>
+    ))}
+  </ul>
+</Admin>

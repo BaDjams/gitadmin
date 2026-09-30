@@ -15,7 +15,7 @@ Le cahier des charges et les décisions prises sont dans [`CLAUDE.md`](CLAUDE.md
 | 1. Choix EmDash / sur mesure | ✅ Sur mesure avec Astro |
 | 2. Projet, D1, R2, pages avec contenu de démonstration | ✅ |
 | 3. Fiche gîte, galerie, tarifs, calendrier, demande de séjour | ✅ |
-| 4. Admin (Cloudflare Access, formulaires, envoi de photos) | à faire |
+| 4. Admin (Cloudflare Access, formulaires, envoi de photos) | ✅ |
 | 5. Synchro iCal (`AvailabilityProvider`) | à faire |
 | 6. Mentions légales définitives, SEO, tests mobiles, mise en ligne | en partie (pages légales avec champs `[À REMPLACER]`) |
 
@@ -28,6 +28,8 @@ Le cahier des charges et les décisions prises sont dans [`CLAUDE.md`](CLAUDE.md
 | `/contact` | `/en/contact` |
 | `/mentions-legales` | `/en/legal-notice` |
 | `/confidentialite` | `/en/privacy` |
+
+Administration (derrière Cloudflare Access) : `/admin` (tableau de bord), `/admin/demandes`, `/admin/gites/<id>` (fiche, `/photos`, `/calendrier`), `/admin/tarifs`, `/admin/textes`, `/admin/reglages`.
 
 Plus `/sitemap.xml`, `/robots.txt`, `/api/demande` (formulaires) et `/media/<clé>` (photos R2 servies par le Worker, utile en local).
 
@@ -58,6 +60,7 @@ npm run dev                      # http://localhost:4321
 ```
 
 En local, les e-mails ne partent pas : le simulateur de Cloudflare les écrit dans la console.
+L'admin est accessible sur http://localhost:4321/admin sans connexion, uniquement parce que `ACCESS_TEAM_DOMAIN` et `ACCESS_AUD` sont vides et que l'adresse est `localhost`. Partout ailleurs, sans configuration Access, l'admin répond 403.
 
 Vérifications : `npm run check` (types), `npm run build`.
 
@@ -78,7 +81,16 @@ Vérifications : `npm run check` (types), `npm run build`.
    npx wrangler secret put DEMANDE_DESTINATAIRES   # adresses séparées par des virgules
    ```
 8. **Déploiement** : `npm run deploy`, puis rattacher `domainedeganzeville.fr` au Worker (Settings, Domains & Routes).
-9. **Cloudflare Access** (étape 4) : protéger `/admin*` et les routes d'écriture de l'admin, avec une règle autorisant les deux adresses e-mail des propriétaires.
+9. **Cloudflare Access** (Zero Trust, Access, Applications, « Self-hosted ») :
+   - domaine `domainedeganzeville.fr`, chemins `admin` et `api/admin` (les deux dans la même application) ;
+   - règle « Allow » avec les deux adresses e-mail des propriétaires (connexion par code reçu par e-mail : rien à installer, fonctionne sur téléphone) ;
+   - durée de session conseillée : 1 mois, pour ne pas se reconnecter à chaque fois sur téléphone ;
+   - puis déclarer au Worker le domaine d'équipe et l'« Application Audience (AUD) Tag » :
+     ```sh
+     npx wrangler secret put ACCESS_TEAM_DOMAIN   # ex. monequipe.cloudflareaccess.com
+     npx wrangler secret put ACCESS_AUD
+     ```
+   Le Worker revérifie la signature du jeton Access à chaque requête d'admin : si Access est mal configuré, l'admin reste fermée.
 
 ## Palette
 

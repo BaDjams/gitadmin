@@ -1,0 +1,37 @@
+---
+import Admin from "../../layouts/Admin.astro";
+import { enregistrerTextes, tousLesTextes } from "../../lib/admin";
+import { apres } from "../../lib/admin-messages";
+import { texteLong } from "../../lib/formulaire";
+import { LANGUES } from "../../lib/i18n";
+import { TEXTES_EDITABLES } from "../../lib/textes-editables";
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  await enregistrerTextes(
+    TEXTES_EDITABLES.flatMap(({ cle }) => LANGUES.map((langue) => ({ cle, langue, valeur: texteLong(f, `${cle}|${langue}`, 5000) }))),
+  );
+  return apres("/admin/textes", { ok: "enregistre" });
+}
+
+const textes = await tousLesTextes();
+---
+<Admin titre="Textes du site">
+  <p class="a-aide">Une ligne vide sépare deux paragraphes. En anglais, un champ vide reprend le texte français.</p>
+  <form method="post">
+    {TEXTES_EDITABLES.map(({ cle, libelle, long }) => (
+      <fieldset>
+        <legend>{libelle}</legend>
+        <div class="a-langues">
+          {LANGUES.map((l) => (
+            <div class="a-champ" lang={l}>
+              <label for={`${cle}|${l}`}>{l === "fr" ? "Français" : "Anglais"}</label>
+              <textarea id={`${cle}|${l}`} name={`${cle}|${l}`} class={long ? "" : "court"} maxlength="5000">{textes[cle]?.[l] ?? ""}</textarea>
+            </div>
+          ))}
+        </div>
+      </fieldset>
+    ))}
+    <div class="a-enregistrer"><button class="a-bouton">Enregistrer les textes</button></div>
+  </form>
+</Admin>

@@ -131,13 +131,19 @@ export async function periodesSaison(depuis: string): Promise<PeriodeSaison[]> {
   return results;
 }
 
-/** Périodes occupées d'un gîte, toutes sources confondues, qui recoupent [debut, fin[. */
+/**
+ * Périodes occupées d'un gîte qui recoupent [debut, fin[ : toutes sources de
+ * calendrier actives confondues, plus les blocages saisis dans l'admin.
+ */
 export async function occupations(giteId: number, debut: string, fin: string): Promise<Occupation[]> {
   const { results } = await env.DB.prepare(
     `SELECT b.arrivee, b.depart FROM bookings b
        JOIN calendar_sources s ON s.id = b.source_id AND s.actif = 1
       WHERE b.gite_id = ?1 AND b.depart > ?2 AND b.arrivee < ?3
-      ORDER BY b.arrivee`,
+     UNION ALL
+     SELECT debut, fin FROM blocages
+      WHERE gite_id = ?1 AND fin > ?2 AND debut < ?3
+      ORDER BY 1`,
   )
     .bind(giteId, debut, fin)
     .all<Occupation>();

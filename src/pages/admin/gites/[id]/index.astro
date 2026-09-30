@@ -1,0 +1,104 @@
+---
+import Admin from "../../../../layouts/Admin.astro";
+import { enregistrerGite, giteEdition, slugPris, type GiteEdition } from "../../../../lib/admin";
+import { apres } from "../../../../lib/admin-messages";
+import { EQUIPEMENTS, estEquipement } from "../../../../lib/equipements";
+import { coche, entier, texte, texteLong } from "../../../../lib/formulaire";
+
+const id = Number(Astro.params.id);
+const ici = `/admin/gites/${id}`;
+const gite = Number.isInteger(id) ? await giteEdition(id) : null;
+if (!gite) return Astro.rewrite("/404");
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const slug = texte(f, "slug", 60).toLowerCase();
+  const capacite = entier(f, "capacite", 1, 50);
+  const chambres = entier(f, "chambres", 0, 20);
+  const ordre = entier(f, "ordre", 0, 999) ?? 0;
+  const lireTextes = (l: "fr" | "en") => ({
+    nom: texte(f, `nom_${l}`, 80),
+    accroche: texte(f, `accroche_${l}`, 300),
+    description: texteLong(f, `description_${l}`, 5000),
+    regles: texteLong(f, `regles_${l}`, 3000),
+  });
+  const maj: GiteEdition = {
+    id,
+    slug,
+    capacite: capacite ?? 0,
+    chambres: chambres ?? 0,
+    surface_m2: entier(f, "surface_m2", 1, 2000),
+    equipements: f.getAll("equipements").filter((e): e is string => typeof e === "string" && estEquipement(e)),
+    frais_menage: entier(f, "frais_menage", 0, 10000),
+    caution: entier(f, "caution", 0, 100000),
+    ordre,
+    publie: coche(f, "publie"),
+    textes: { fr: lireTextes("fr"), en: lireTextes("en") },
+  };
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || capacite === null || chambres === null || !maj.textes.fr.nom) {
+    return apres(ici, { erreur: "invalide" });
+  }
+  if (await slugPris(slug, id)) return apres(ici, { erreur: "slug" });
+  await enregistrerGite(maj);
+  return apres(ici, { ok: "enregistre" });
+}
+
+const langues = [
+  { code: "fr", titre: "Français" },
+  { code: "en", titre: "Anglais (vide = texte français)" },
+] as const;
+---
+<Admin titre={`Fiche : ${gite.textes.fr.nom}`} retour={{ href: "/admin", libelle: "Tableau de bord" }}>
+  <p class="a-actions">
+    <a class="a-bouton petit secondaire" href={`${ici}/photos`}>Photos</a>
+    <a class="a-bouton petit secondaire" href={`${ici}/calendrier`}>Calendrier</a>
+    <a class="a-bouton petit secondaire" href={`/gites/${gite.slug}`} target="_blank" rel="noopener">Voir la page ↗</a>
+  </p>
+
+  <form method="post">
+    <fieldset>
+      <legend>Informations</legend>
+      <div class="a-grille">
+        <div class="a-champ"><label for="capacite">Voyageurs</label><input type="number" id="capacite" name="capacite" min="1" max="50" value={gite.capacite} required /></div>
+        <div class="a-champ"><label for="chambres">Chambres</label><input type="number" id="chambres" name="chambres" min="0" max="20" value={gite.chambres} required /></div>
+        <div class="a-champ"><label for="surface_m2">Surface (m²)</label><input type="number" id="surface_m2" name="surface_m2" min="1" value={gite.surface_m2 ?? ""} /></div>
+        <div class="a-champ"><label for="frais_menage">Ménage (€)</label><input type="number" id="frais_menage" name="frais_menage" min="0" value={gite.frais_menage ?? ""} /></div>
+        <div class="a-champ"><label for="caution">Caution (€)</label><input type="number" id="caution" name="caution" min="0" value={gite.caution ?? ""} /></div>
+        <div class="a-champ"><label for="ordre">Ordre d'affichage</label><input type="number" id="ordre" name="ordre" min="0" value={gite.ordre} /></div>
+      </div>
+      <div class="a-champ">
+        <label for="slug">Adresse de la page</label>
+        <input type="text" id="slug" name="slug" value={gite.slug} pattern="[a-z0-9]+(-[a-z0-9]+)*" required />
+        <p class="a-aide">Minuscules, chiffres et tirets. La modifier casse les liens déjà partagés.</p>
+      </div>
+      <label class="a-case"><input type="checkbox" name="publie" checked={gite.publie} /> Gîte visible sur le site</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Équipements</legend>
+      <div class="a-cases">
+        {Object.entries(EQUIPEMENTS).map(([cle, l]) => (
+          <label><input type="checkbox" name="equipements" value={cle} checked={gite.equipements.includes(cle)} /> {l.fr}</label>
+        ))}
+      </div>
+    </fieldset>
+
+    <div class="a-langues">
+      {langues.map(({ code, titre }) => (
+        <fieldset lang={code}>
+          <legend>{titre}</legend>
+          <div class="a-champ"><label for={`nom_${code}`}>Nom</label><input type="text" id={`nom_${code}`} name={`nom_${code}`} value={gite.textes[code].nom} maxlength="80" required={code === "fr"} /></div>
+          <div class="a-champ"><label for={`accroche_${code}`}>Accroche (une phrase)</label><textarea class="court" id={`accroche_${code}`} name={`accroche_${code}`} maxlength="300">{gite.textes[code].accroche}</textarea></div>
+          <div class="a-champ">
+            <label for={`description_${code}`}>Description</label>
+            <textarea id={`description_${code}`} name={`description_${code}`} rows="8" maxlength="5000">{gite.textes[code].description}</textarea>
+            <p class="a-aide">Une ligne vide sépare deux paragraphes.</p>
+          </div>
+          <div class="a-champ"><label for={`regles_${code}`}>Bon à savoir (règles, horaires)</label><textarea class="court" id={`regles_${code}`} name={`regles_${code}`} maxlength="3000">{gite.textes[code].regles}</textarea></div>
+        </fieldset>
+      ))}
+    </div>
+
+    <div class="a-enregistrer"><button class="a-bouton">Enregistrer</button></div>
+  </form>
+</Admin>

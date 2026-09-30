@@ -1,0 +1,35 @@
+---
+import Admin from "../../../layouts/Admin.astro";
+import { listeDemandes, STATUTS_DEMANDE, type StatutDemande } from "../../../lib/admin";
+import { LIBELLES_STATUT, dateHeure, periode } from "../../../lib/admin-format";
+
+const demande = Astro.url.searchParams.get("statut") as StatutDemande;
+const statut: StatutDemande = STATUTS_DEMANDE.includes(demande) ? demande : "nouvelle";
+const demandes = await listeDemandes(statut);
+---
+<Admin titre="Demandes">
+  <p class="a-actions">
+    {STATUTS_DEMANDE.map((s) => (
+      <a class={`a-bouton petit ${s === statut ? "" : "secondaire"}`} href={`?statut=${s}`} aria-current={s === statut ? "page" : undefined}>
+        {LIBELLES_STATUT[s]}
+      </a>
+    ))}
+  </p>
+
+  {demandes.length === 0 ? (
+    <p>Aucune demande dans cette liste.</p>
+  ) : (
+    <ul class="a-liste">
+      {demandes.map((d) => (
+        <li class="a-carte">
+          <a class="a-demande" href={`/admin/demandes/${d.id}`}>
+            <strong>{d.nom}</strong> · {d.gite ?? "Contact"}
+            {d.arrivee && <><br />{periode(d.arrivee, d.depart)}</>}
+            <br /><span class="a-meta">Reçue le {dateHeure(d.cree_le)} · {d.langue.toUpperCase()}</span>
+            {!d.email_envoye && <> <span class="a-badge alerte">e-mail non envoyé</span></>}
+          </a>
+        </li>
+      ))}
+    </ul>
+  )}
+</Admin>

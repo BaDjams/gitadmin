@@ -1,0 +1,45 @@
+---
+import Admin from "../../layouts/Admin.astro";
+import { enregistrerParametres } from "../../lib/admin";
+import { apres } from "../../lib/admin-messages";
+import { parametres } from "../../lib/db";
+import { coche, texte } from "../../lib/formulaire";
+
+const FILIGRANE_DEFAUT = "domainedeganzeville.fr";
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  await enregistrerParametres({
+    filigrane_actif: coche(f, "filigrane_actif") ? "1" : "0",
+    filigrane_texte: texte(f, "filigrane_texte", 60) || FILIGRANE_DEFAUT,
+    mode_demo: coche(f, "mode_demo") ? "1" : "0",
+  });
+  return apres("/admin/reglages", { ok: "enregistre" });
+}
+
+const p = await parametres();
+---
+<Admin titre="Réglages">
+  <form method="post">
+    <fieldset>
+      <legend>Filigrane des photos</legend>
+      <label class="a-case"><input type="checkbox" name="filigrane_actif" checked={p.filigrane_actif === "1"} /> Ajouter un filigrane aux nouvelles photos</label>
+      <div class="a-champ">
+        <label for="filigrane_texte">Texte du filigrane</label>
+        <input type="text" id="filigrane_texte" name="filigrane_texte" value={p.filigrane_texte || FILIGRANE_DEFAUT} maxlength="60" />
+      </div>
+      <p class="a-aide">S'applique aux photos envoyées ensuite (discret, en bas à droite). Les photos déjà en ligne ne changent pas.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Mise en ligne</legend>
+      <label class="a-case"><input type="checkbox" name="mode_demo" checked={p.mode_demo === "1"} /> Mode démonstration</label>
+      <p class="a-aide">
+        Tant qu'il est coché, un bandeau « site en préparation » s'affiche et le site n'est pas indexé par Google.
+        À décocher le jour de la mise en ligne, une fois tous les « [À REMPLACER] » remplacés.
+      </p>
+    </fieldset>
+
+    <div class="a-enregistrer"><button class="a-bouton">Enregistrer</button></div>
+  </form>
+</Admin>

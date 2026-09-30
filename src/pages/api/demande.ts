@@ -4,23 +4,10 @@ import type { APIRoute } from "astro";
 import { ajouterJours, aujourdhui, estDateIso } from "../../lib/dates";
 import { enregistrerDemande, marquerEmailEnvoye, nomGite, type NouvelleDemande } from "../../lib/db";
 import { notifierDemande } from "../../lib/email";
+import { EMAIL, entier, texte } from "../../lib/formulaire";
 import { estLangue } from "../../lib/i18n";
 import { absolu } from "../../lib/photos";
 import { verifierTurnstile } from "../../lib/turnstile";
-
-const EMAIL = /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/;
-
-function texte(f: FormData, nom: string, max: number): string {
-  const v = f.get(nom);
-  return typeof v === "string" ? v.trim().slice(0, max) : "";
-}
-
-function entier(f: FormData, nom: string, min: number, max: number): number | null {
-  const s = texte(f, nom, 10);
-  if (!s) return null;
-  const v = Number(s);
-  return Number.isInteger(v) && v >= min && v <= max ? v : null;
-}
 
 export const POST: APIRoute = async ({ request, redirect, clientAddress }) => {
   let f: FormData;

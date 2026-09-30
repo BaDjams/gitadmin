@@ -1,0 +1,58 @@
+---
+import "../styles/admin.css";
+import { MESSAGES_ERREUR, MESSAGES_OK } from "../lib/admin-messages";
+
+interface Props {
+  titre: string;
+  /** Lien de retour affiché au-dessus du titre. */
+  retour?: { href: string; libelle: string };
+}
+const { titre, retour } = Astro.props;
+const courant = Astro.url.pathname;
+const ok = MESSAGES_OK[Astro.url.searchParams.get("ok") as keyof typeof MESSAGES_OK];
+const erreur = MESSAGES_ERREUR[Astro.url.searchParams.get("erreur") as keyof typeof MESSAGES_ERREUR];
+const liens = [
+  { href: "/admin", libelle: "Accueil" },
+  { href: "/admin/demandes", libelle: "Demandes" },
+  { href: "/admin/tarifs", libelle: "Tarifs" },
+  { href: "/admin/textes", libelle: "Textes" },
+  { href: "/admin/reglages", libelle: "Réglages" },
+];
+const actif = (href: string) => (href === "/admin" ? courant === "/admin" : courant.startsWith(href));
+---
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{titre} – Admin Ganzeville</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#22463c" />
+  </head>
+  <body>
+    <header class="a-entete">
+      <a class="a-marque" href="/admin">Ganzeville · admin</a>
+      <a class="a-site" href="/" target="_blank" rel="noopener">Voir le site ↗</a>
+    </header>
+    <nav class="a-nav" aria-label="Administration">
+      {liens.map((l) => <a href={l.href} aria-current={actif(l.href) ? "page" : undefined}>{l.libelle}</a>)}
+    </nav>
+    <main class="a-contenu">
+      {retour && <p class="a-retour"><a href={retour.href}>← {retour.libelle}</a></p>}
+      <h1>{titre}</h1>
+      {ok && <p class="a-ok" role="status">{ok}</p>}
+      {erreur && <p class="a-erreur" role="alert">{erreur}</p>}
+      <slot />
+    </main>
+    <footer class="a-pied">Connecté : {Astro.locals.admin?.email}</footer>
+    <script>
+      // Confirmation avant les actions destructrices (formulaires marqués data-confirmer).
+      document.addEventListener("submit", (e) => {
+        const form = e.target as HTMLFormElement;
+        const question = form.dataset.confirmer;
+        if (question && !confirm(question)) e.preventDefault();
+      });
+    </script>
+  </body>
+</html>

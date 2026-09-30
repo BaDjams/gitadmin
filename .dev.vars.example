@@ -11,3 +11,8 @@ DEMANDE_DESTINATAIRES=exemple@example.com
 # En local, les photos R2 sont servies par le Worker lui-même.
 IMG_BASE_URL=/media
 SITE_URL=http://localhost:4321
+
+# Cloudflare Access (admin). Laisser vide en local : l'admin est alors ouverte sur localhost uniquement.
+# En production : équipe (ex. « monequipe.cloudflareaccess.com ») et « Application Audience (AUD) Tag ».
+ACCESS_TEAM_DOMAIN=
+ACCESS_AUD=

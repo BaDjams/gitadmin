@@ -1,0 +1,97 @@
+/* Administration : mobile d'abord, grandes zones tactiles, aucune dépendance. */
+:root {
+  --vert: #2f5d50;
+  --vert-fonce: #22463c;
+  --vert-clair: #e2ede6;
+  --fond: #f4f2ec;
+  --carte: #fff;
+  --texte: #2b3640;
+  --doux: #5b6670;
+  --bord: #d6cfbf;
+  --brique: #9a472d;
+  --brique-clair: #f4e1d9;
+  --focus: #1f6fb2;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--fond); color: var(--texte); font: 1rem/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--vert); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+img { max-width: 100%; height: auto; display: block; }
+
+.a-entete { background: var(--vert-fonce); color: #fff; display: flex; justify-content: space-between; align-items: center; padding: .75rem 1rem; gap: 1rem; }
+.a-entete a { color: #fff; text-decoration: none; }
+.a-marque { font-weight: 700; }
+.a-site { font-size: .9rem; opacity: .9; }
+.a-nav { display: flex; gap: .25rem; overflow-x: auto; background: var(--carte); border-bottom: 1px solid var(--bord); padding: 0 .5rem; position: sticky; top: 0; z-index: 10; }
+.a-nav a { padding: .8rem .75rem; text-decoration: none; white-space: nowrap; color: var(--texte); border-bottom: 3px solid transparent; }
+.a-nav a[aria-current="page"] { border-color: var(--vert); color: var(--vert-fonce); font-weight: 600; }
+.a-contenu { max-width: 56rem; margin: 0 auto; padding: 1rem 1rem 3rem; }
+.a-pied { text-align: center; color: var(--doux); font-size: .85rem; padding: 1rem; }
+h1 { font-size: 1.5rem; margin: .25rem 0 1rem; color: var(--vert-fonce); }
+h2 { font-size: 1.15rem; margin: 1.75rem 0 .75rem; color: var(--vert-fonce); }
+h3 { font-size: 1rem; margin: 1rem 0 .5rem; }
+.a-retour { margin: 0; font-size: .95rem; }
+.a-ok, .a-erreur, .a-alerte { padding: .75rem 1rem; border-radius: 8px; margin: 0 0 1rem; }
+.a-ok { background: var(--vert-clair); color: var(--vert-fonce); }
+.a-erreur, .a-alerte { background: var(--brique-clair); color: #5e2a19; }
+.a-aide { color: var(--doux); font-size: .9rem; margin: .25rem 0 .75rem; }
+
+.a-carte { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 1rem; margin-bottom: 1rem; }
+.a-carte > :first-child { margin-top: 0; }
+.a-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+.a-tuiles { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.a-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .75rem; }
+.a-actions form { margin: 0; }
+.a-badge { display: inline-block; font-size: .8rem; padding: .1rem .5rem; border-radius: 999px; background: var(--vert-clair); color: var(--vert-fonce); }
+.a-badge.alerte { background: var(--brique-clair); color: #5e2a19; }
+.a-meta { color: var(--doux); font-size: .9rem; }
+
+label { display: block; font-weight: 600; font-size: .95rem; margin-bottom: .25rem; }
+.a-champ { margin-bottom: .9rem; }
+.a-grille { display: grid; gap: 0 .75rem; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); }
+input[type="text"], input[type="number"], input[type="date"], input[type="url"], input[type="email"], select, textarea {
+  width: 100%; font: inherit; color: inherit; background: #fff; border: 1px solid #a9a193; border-radius: 6px; padding: .6rem .7rem; min-height: 2.75rem;
+}
+textarea { min-height: 8rem; resize: vertical; }
+textarea.court { min-height: 4rem; }
+fieldset { border: 1px solid var(--bord); border-radius: 8px; margin: 0 0 1rem; padding: .75rem 1rem; }
+legend { font-weight: 700; padding: 0 .25rem; }
+.a-cases { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: .25rem .75rem; }
+.a-cases label, .a-case { font-weight: 400; display: flex; gap: .5rem; align-items: center; min-height: 2.25rem; margin: 0; }
+input[type="checkbox"] { width: 1.25rem; height: 1.25rem; }
+
+.a-bouton { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; min-height: 2.75rem; padding: .5rem 1.1rem; border-radius: 8px; border: 0; font: inherit; font-weight: 600; cursor: pointer; background: var(--vert); color: #fff; text-decoration: none; }
+.a-bouton:hover { background: var(--vert-fonce); color: #fff; }
+.a-bouton.secondaire { background: #fff; color: var(--vert); border: 1px solid var(--vert); }
+.a-bouton.danger { background: #fff; color: var(--brique); border: 1px solid var(--brique); }
+.a-bouton.petit { min-height: 2.25rem; padding: .25rem .75rem; font-size: .9rem; }
+.a-bouton[disabled] { opacity: .5; cursor: not-allowed; }
+.a-enregistrer { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--fond) 30%); padding: 1rem 0 .5rem; }
+
+/* Onglets de langue */
+.a-langues { display: grid; gap: 1rem; }
+@media (min-width: 56rem) { .a-langues { grid-template-columns: 1fr 1fr; } }
+
+/* Tableaux compacts qui défilent sur petit écran */
+.a-defile { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; background: var(--carte); }
+th, td { padding: .5rem; border-bottom: 1px solid var(--bord); text-align: left; vertical-align: middle; }
+th { font-size: .9rem; color: var(--doux); }
+td input { min-width: 5rem; }
+
+/* Photos */
+.a-photos { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; }
+.a-photo { display: grid; gap: .75rem; grid-template-columns: 7rem 1fr; background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: .75rem; }
+.a-photo img { width: 7rem; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 6px; }
+@media (max-width: 30rem) { .a-photo { grid-template-columns: 1fr; } .a-photo img { width: 100%; } }
+.a-apercus { display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: .5rem; margin: .75rem 0; }
+.a-apercus figure { margin: 0; font-size: .8rem; color: var(--doux); }
+.a-progression { font-weight: 600; }
+
+/* Demandes */
+.a-demande { display: block; text-decoration: none; color: inherit; }
+.a-demande strong { color: var(--vert-fonce); }
+dl.a-details { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1rem; margin: 0; }
+dl.a-details dt { color: var(--doux); }
+dl.a-details dd { margin: 0; overflow-wrap: anywhere; }
+.a-message { white-space: pre-wrap; background: var(--fond); border-radius: 8px; padding: .75rem; margin: .5rem 0 0; }
