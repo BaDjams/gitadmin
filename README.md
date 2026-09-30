@@ -64,6 +64,15 @@ L'admin est accessible sur http://localhost:4321/admin sans connexion, uniquemen
 
 Vérifications : `npm run check` (types), `npm run build`.
 
+## Démo sur GitHub Pages
+
+GitHub Pages ne sait servir que des fichiers statiques : il ne peut pas exécuter le Worker ni lire D1.
+Le workflow `.github/workflows/demo-pages.yml` publie donc, à chaque mise à jour de `main`, une **démo statique** :
+`scripts/demo-statique.sh` lance le site en local avec le contenu de démonstration, en aspire les pages publiques
+et désactive les formulaires. L'admin n'y figure pas.
+
+Réglage à faire une fois : dans GitHub, Settings, Pages, « Build and deployment », choisir la source **GitHub Actions**.
+
 ## Mise en place sur Cloudflare
 
 À faire une fois, depuis le compte Cloudflare dédié au site.

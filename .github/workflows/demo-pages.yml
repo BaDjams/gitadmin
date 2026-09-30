@@ -1,0 +1,42 @@
+# Publie une démo statique du site sur GitHub Pages (aperçu uniquement).
+# Le site réel, avec base de données, formulaires et admin, est déployé sur Cloudflare.
+name: Démo GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  construire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: ./scripts/demo-statique.sh demo-statique
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: demo-statique
+
+  deployer:
+    needs: construire
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - id: deploiement
+        uses: actions/deploy-pages@v4
