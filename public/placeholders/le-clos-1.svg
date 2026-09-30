@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1067" viewBox="0 0 1600 1067">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6dcc4"/><stop offset="1" stop-color="#b39a6a"/></linearGradient></defs>
+<rect width="1600" height="1067" fill="url(#g)"/>
+<path d="M0 760 C 300 680 520 820 800 740 S 1300 660 1600 730 V1067 H0Z" fill="#b39a6a" opacity=".55"/>
+<text x="800" y="500" text-anchor="middle" font-family="Georgia, serif" font-size="72" fill="#fff">Le Clos</text>
+<text x="800" y="580" text-anchor="middle" font-family="system-ui, sans-serif" font-size="40" fill="#fff" opacity=".9">Photo de démonstration 1</text>
+</svg>

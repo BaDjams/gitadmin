@@ -1,0 +1,127 @@
+---
+import Base from "../layouts/Base.astro";
+import Calendrier from "../components/Calendrier.astro";
+import FormulaireDemande from "../components/FormulaireDemande.astro";
+import Galerie from "../components/Galerie.astro";
+import Paragraphes from "../components/Paragraphes.astro";
+import Tarifs from "../components/Tarifs.astro";
+import { construireCalendrier } from "../lib/calendrier";
+import { ajouterMois, aujourdhui } from "../lib/dates";
+import { occupations, periodesSaison, textes, type Gite } from "../lib/db";
+import { libellesEquipements } from "../lib/equipements";
+import { chemin, t, type Langue } from "../lib/i18n";
+import { ADRESSE_SCHEMA, GEO_SCHEMA } from "../lib/lieu";
+import { absolu, urlPhoto } from "../lib/photos";
+
+// Le gîte est chargé par la page, qui renvoie une 404 s'il n'existe pas.
+interface Props { lang: Langue; gite: Gite }
+const { lang, gite } = Astro.props;
+const d = t(lang);
+
+const jour = aujourdhui();
+const NB_MOIS = 12;
+const [occ, periodes, tx] = await Promise.all([
+  occupations(gite.id, jour, ajouterMois(jour, NB_MOIS + 1)),
+  periodesSaison(jour),
+  textes(lang),
+]);
+const calendrier = construireCalendrier(jour, occ, NB_MOIS);
+const equipements = libellesEquipements(gite.equipements, lang);
+const url = chemin(lang, "gite", gite.slug);
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "VacationRental",
+  name: gite.nom,
+  identifier: gite.slug,
+  description: gite.accroche,
+  url: absolu(url),
+  image: gite.photos.map((p) => absolu(urlPhoto(p.cle_pleine))),
+  address: ADRESSE_SCHEMA,
+  geo: GEO_SCHEMA,
+  containsPlace: {
+    "@type": "Accommodation",
+    additionalType: "EntirePlace",
+    occupancy: { "@type": "QuantitativeValue", value: gite.capacite },
+    numberOfBedrooms: gite.chambres,
+    ...(gite.surface_m2 && { floorSize: { "@type": "QuantitativeValue", value: gite.surface_m2, unitCode: "MTK" } }),
+    amenityFeature: equipements.map((e) => ({ "@type": "LocationFeatureSpecification", name: e, value: true })),
+  },
+  ...(gite.prix_min != null && {
+    priceRange: `${d.prix(gite.prix_min)} – ${d.prix(Math.max(...gite.tarifs.map((t) => t.prix_nuit)))}`,
+  }),
+};
+---
+<Base
+  lang={lang}
+  page="gite"
+  slug={gite.slug}
+  titre={gite.nom}
+  description={gite.accroche}
+  image={gite.photo ? urlPhoto(gite.photo.cle_pleine) : undefined}
+  jsonLd={jsonLd}
+>
+  <div class="conteneur">
+    <nav class="fil" aria-label={d.filAriane}>
+      <a href={chemin(lang, "accueil")}>{d.navAccueil}</a> › <a href={`${chemin(lang, "accueil")}#gites`}>{d.navGites}</a> › <span aria-current="page">{gite.nom}</span>
+    </nav>
+
+    <h1>{gite.nom}</h1>
+    <p class="accroche">{gite.accroche}</p>
+    <ul class="infos">
+      <li>{d.personnes(gite.capacite)}</li>
+      <li>{d.chambres(gite.chambres)}</li>
+      {gite.surface_m2 && <li>{d.surface(gite.surface_m2)}</li>}
+      {gite.prix_min != null && <li>{d.aPartirDe(d.prix(gite.prix_min))}</li>}
+    </ul>
+
+    <div style="margin-top: 1.25rem">
+      <Galerie photos={gite.photos} lang={lang} />
+    </div>
+
+    <div class="fiche">
+      <div>
+        <section aria-labelledby="t-description">
+          <h2 id="t-description">{d.description}</h2>
+          <div class="prose"><Paragraphes texte={gite.description} /></div>
+        </section>
+
+        {equipements.length > 0 && (
+          <section aria-labelledby="t-equipements">
+            <h2 id="t-equipements">{d.equipements}</h2>
+            <ul class="liste-equipements">{equipements.map((e) => <li>{e}</li>)}</ul>
+          </section>
+        )}
+
+        {gite.regles && (
+          <section aria-labelledby="t-regles">
+            <h2 id="t-regles">{d.regles}</h2>
+            <div class="prose"><Paragraphes texte={gite.regles} /></div>
+          </section>
+        )}
+
+        <section aria-labelledby="t-tarifs">
+          <h2 id="t-tarifs">{d.tarifs}</h2>
+          <Tarifs
+            lang={lang}
+            tarifs={gite.tarifs}
+            periodes={periodes}
+            fraisMenage={gite.frais_menage}
+            caution={gite.caution}
+            taxeSejour={tx["tarifs.taxe_sejour"]}
+          />
+        </section>
+
+        <section aria-labelledby="t-dispo">
+          <h2 id="t-dispo">{d.disponibilites}</h2>
+          <p class="aide">{d.dispoIndicatives}</p>
+          <Calendrier mois={calendrier} lang={lang} />
+        </section>
+      </div>
+
+      <aside>
+        <FormulaireDemande lang={lang} mode="sejour" gite={{ id: gite.id, nom: gite.nom }} retour={url} />
+      </aside>
+    </div>
+  </div>
+</Base>

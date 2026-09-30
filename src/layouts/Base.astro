@@ -1,0 +1,94 @@
+---
+import "../styles/global.css";
+import { chemin, t, type Langue, type PageId } from "../lib/i18n";
+import { parametres } from "../lib/db";
+import { absolu } from "../lib/photos";
+
+interface Props {
+  lang: Langue;
+  page: PageId;
+  slug?: string;
+  titre: string;
+  description: string;
+  image?: string;
+  jsonLd?: object | object[];
+  /** false : page exclue des moteurs de recherche (404…). */
+  indexable?: boolean;
+}
+
+const { lang, page, slug, titre, description, image, jsonLd, indexable = true } = Astro.props;
+const d = t(lang);
+const autre: Langue = lang === "fr" ? "en" : "fr";
+const params = await parametres();
+const modeDemo = params.mode_demo === "1";
+// Tant que le site est en mode démonstration, rien n'est indexé.
+const noindex = modeDemo || !indexable;
+
+const canonique = absolu(chemin(lang, page, slug));
+const alternatives = { fr: absolu(chemin("fr", page, slug)), en: absolu(chemin("en", page, slug)) };
+const titreComplet = page === "accueil" ? `${d.siteNom} – ${d.siteSousTitre}` : `${titre} – ${d.siteNom}`;
+const courant = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titreComplet}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="canonical" href={canonique} />
+    <link rel="alternate" hreflang="fr" href={alternatives.fr} />
+    <link rel="alternate" hreflang="en" href={alternatives.en} />
+    <link rel="alternate" hreflang="x-default" href={alternatives.fr} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#22463c" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={d.siteNom} />
+    <meta property="og:locale" content={lang === "fr" ? "fr_FR" : "en_GB"} />
+    <meta property="og:title" content={titreComplet} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonique} />
+    {image && <meta property="og:image" content={absolu(image)} />}
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="lien-evitement" href="#contenu">{d.allerAuContenu}</a>
+    {modeDemo && <p class="bandeau-demo" role="note">{d.bandeauDemo}</p>}
+    <header class="entete">
+      <div class="conteneur">
+        <a class="marque" href={chemin(lang, "accueil")}>
+          <strong>{d.siteNom}</strong>
+          <span>{d.siteSousTitre}</span>
+        </a>
+        <nav class="nav" aria-label={d.menu}>
+          <ul>
+            <li><a href={chemin(lang, "accueil")} aria-current={courant === chemin(lang, "accueil") ? "page" : undefined}>{d.navAccueil}</a></li>
+            <li><a href={`${chemin(lang, "accueil")}#gites`}>{d.navGites}</a></li>
+            <li><a href={chemin(lang, "contact")} aria-current={courant === chemin(lang, "contact") ? "page" : undefined}>{d.navContact}</a></li>
+            <li>
+              <a class="langue" href={chemin(autre, page, slug)} hreflang={autre} lang={autre}>{d.autreLangue}</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="contenu" tabindex="-1">
+      <slot />
+    </main>
+
+    <footer class="pied">
+      <div class="conteneur">
+        <p><strong>{d.siteNom}</strong> · Ganzeville (76), Normandie</p>
+        <ul>
+          <li><a href={chemin(lang, "contact")}>{d.navContact}</a></li>
+          <li><a href={chemin(lang, "mentions")}>{d.mentionsLegales}</a></li>
+          <li><a href={chemin(lang, "confidentialite")}>{d.confidentialite}</a></li>
+        </ul>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,31 @@
+---
+import type { GiteResume } from "../lib/db";
+import { chemin, t, type Langue } from "../lib/i18n";
+import { urlPhoto } from "../lib/photos";
+
+interface Props { gite: GiteResume; lang: Langue; prioritaire?: boolean }
+const { gite, lang, prioritaire = false } = Astro.props;
+const d = t(lang);
+---
+<li class="carte">
+  {gite.photo && (
+    <img
+      src={urlPhoto(gite.photo.cle_miniature)}
+      width={gite.photo.largeur_min}
+      height={gite.photo.hauteur_min}
+      alt=""
+      loading={prioritaire ? "eager" : "lazy"}
+      decoding="async"
+    />
+  )}
+  <div class="corps">
+    <h3><a href={chemin(lang, "gite", gite.slug)}>{gite.nom}</a></h3>
+    <ul class="infos">
+      <li>{d.personnes(gite.capacite)}</li>
+      <li>{d.chambres(gite.chambres)}</li>
+      {gite.surface_m2 && <li>{d.surface(gite.surface_m2)}</li>}
+    </ul>
+    <p>{gite.accroche}</p>
+    {gite.prix_min != null && <p class="prix">{d.aPartirDe(d.prix(gite.prix_min))}</p>}
+  </div>
+</li>

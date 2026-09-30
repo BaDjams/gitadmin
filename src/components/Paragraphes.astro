@@ -1,0 +1,11 @@
+---
+// Texte brut saisi dans l'admin : une ligne vide sépare deux paragraphes.
+interface Props { texte: string; class?: string }
+const { texte, class: classe } = Astro.props;
+const paragraphes = texte.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+---
+{paragraphes.map((p) => (
+  <p class={classe}>
+    {p.split("\n").map((ligne, i) => (<>{i > 0 && <br />}{ligne}</>))}
+  </p>
+))}

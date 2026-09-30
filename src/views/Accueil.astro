@@ -1,0 +1,68 @@
+---
+import Base from "../layouts/Base.astro";
+import CarteGite from "../components/CarteGite.astro";
+import Paragraphes from "../components/Paragraphes.astro";
+import { listerGites, textes } from "../lib/db";
+import { chemin, t, type Langue } from "../lib/i18n";
+import { ADRESSE_SCHEMA, GEO_SCHEMA } from "../lib/lieu";
+import { absolu, urlPhoto } from "../lib/photos";
+
+interface Props { lang: Langue }
+const { lang } = Astro.props;
+const d = t(lang);
+const [gites, tx] = await Promise.all([listerGites(lang), textes(lang)]);
+const photoHero = gites[0]?.photo;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "LodgingBusiness",
+  name: d.siteNom,
+  description: tx["accueil.intro"],
+  address: ADRESSE_SCHEMA,
+  geo: GEO_SCHEMA,
+  url: absolu(chemin(lang, "accueil")),
+  image: photoHero ? absolu(urlPhoto(photoHero.cle_pleine)) : undefined,
+  containsPlace: gites.map((g) => ({
+    "@type": "VacationRental",
+    name: g.nom,
+    url: absolu(chemin(lang, "gite", g.slug)),
+  })),
+};
+---
+<Base
+  lang={lang}
+  page="accueil"
+  titre={d.siteNom}
+  description={tx["accueil.intro"] ?? d.siteSousTitre}
+  image={photoHero ? urlPhoto(photoHero.cle_pleine) : undefined}
+  jsonLd={jsonLd}
+>
+  <section class="hero">
+    {photoHero && (
+      <img src={urlPhoto(photoHero.cle_pleine)} width={photoHero.largeur} height={photoHero.hauteur} alt="" fetchpriority="high" />
+    )}
+    <div class="texte">
+      <div class="conteneur">
+        <h1>{tx["accueil.titre"] ?? d.siteNom}</h1>
+        {tx["accueil.intro"] && <p>{tx["accueil.intro"]}</p>}
+      </div>
+    </div>
+  </section>
+
+  <div class="conteneur">
+    <section aria-labelledby="titre-lieu">
+      <h2 id="titre-lieu">{d.leLieu}</h2>
+      <div class="prose">
+        {tx["accueil.lieu"] && <Paragraphes texte={tx["accueil.lieu"]} />}
+        {tx["accueil.peche"] && <p class="note">{tx["accueil.peche"]}</p>}
+      </div>
+    </section>
+
+    <section id="gites" aria-labelledby="titre-gites">
+      <h2 id="titre-gites">{d.lesGites}</h2>
+      <ul class="cartes">
+        {gites.map((g) => <CarteGite gite={g} lang={lang} />)}
+      </ul>
+    </section>
+  </div>
+</Base>

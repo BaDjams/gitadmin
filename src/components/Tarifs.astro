@@ -1,0 +1,50 @@
+---
+import type { PeriodeSaison, Tarif } from "../lib/db";
+import { t, type Langue } from "../lib/i18n";
+import Paragraphes from "./Paragraphes.astro";
+
+interface Props {
+  lang: Langue;
+  tarifs: Tarif[];
+  periodes: PeriodeSaison[];
+  fraisMenage: number | null;
+  caution: number | null;
+  taxeSejour?: string;
+}
+const { lang, tarifs, periodes, fraisMenage, caution, taxeSejour } = Astro.props;
+const d = t(lang);
+---
+{tarifs.length > 0 && (
+  <table>
+    <thead>
+      <tr><th scope="col">{d.saison}</th><th scope="col">{d.prixNuit}</th><th scope="col">{d.sejourMin}</th></tr>
+    </thead>
+    <tbody>
+      {tarifs.map((tarif) => (
+        <tr>
+          <th scope="row">{d.saisons[tarif.saison]}</th>
+          <td>{d.prix(tarif.prix_nuit)}</td>
+          <td>{d.nuits(tarif.sejour_min)}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+)}
+
+<div class="petites-lignes">
+  {fraisMenage != null && <p>{d.fraisMenage(d.prix(fraisMenage))}</p>}
+  {caution != null && <p>{d.caution(d.prix(caution))}</p>}
+  {taxeSejour && <Paragraphes texte={taxeSejour} />}
+
+  {periodes.length > 0 && (
+    <>
+      <h3>{d.periodesSaison}</h3>
+      <ul>
+        {periodes.filter((p) => p.saison !== "basse").map((p) => (
+          <li>{d.saisons[p.saison]}{d.deuxPoints}{d.du} {d.date(p.debut)} {d.au} {d.date(p.fin)}</li>
+        ))}
+      </ul>
+      <p>{d.horsPeriodes}</p>
+    </>
+  )}
+</div>
