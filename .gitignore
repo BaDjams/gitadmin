@@ -9,3 +9,6 @@ dist/
 .env.*
 *.log
 .DS_Store
+.apercus/
+demo-statique/
+wrangler-demo.log
