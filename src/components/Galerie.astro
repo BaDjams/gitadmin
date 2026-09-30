@@ -1,0 +1,90 @@
+---
+// Galerie : miniatures en chargement différé, dimensions déclarées.
+// Sans JavaScript, chaque miniature ouvre la photo pleine ; avec, une visionneuse
+// accessible (<dialog>, flèches du clavier, Échap) prend le relais.
+import type { Photo } from "../lib/db";
+import { t, type Langue } from "../lib/i18n";
+import { urlPhoto } from "../lib/photos";
+
+interface Props { photos: Photo[]; lang: Langue }
+const { photos, lang } = Astro.props;
+const d = t(lang);
+---
+{photos.length > 0 && (
+  <section aria-label={d.galerie}>
+    <ul class="galerie" data-galerie>
+      {photos.map((p, i) => (
+        <li>
+          <a
+            href={urlPhoto(p.cle_pleine)}
+            data-pleine={urlPhoto(p.cle_pleine)}
+            data-largeur={p.largeur}
+            data-hauteur={p.hauteur}
+            data-alt={p.alt}
+            data-position={d.photoSur(i + 1, photos.length)}
+          >
+            <img
+              src={urlPhoto(i === 0 ? p.cle_pleine : p.cle_miniature)}
+              width={i === 0 ? p.largeur : p.largeur_min}
+              height={i === 0 ? p.hauteur : p.hauteur_min}
+              alt={p.alt}
+              loading={i === 0 ? "eager" : "lazy"}
+              fetchpriority={i === 0 ? "high" : undefined}
+              decoding="async"
+              sizes={i === 0 ? "(min-width: 64rem) 36rem, 100vw" : "(min-width: 48rem) 18rem, 50vw"}
+            />
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    <dialog class="visionneuse" aria-label={d.galerie} data-visionneuse>
+      <figure>
+        <img alt="" />
+        <figcaption aria-live="polite"></figcaption>
+      </figure>
+      <button type="button" class="fermer" data-action="fermer" aria-label={d.fermer}>×</button>
+      <button type="button" class="prec" data-action="prec" aria-label={d.precedente}>‹</button>
+      <button type="button" class="suiv" data-action="suiv" aria-label={d.suivante}>›</button>
+    </dialog>
+  </section>
+)}
+
+<script>
+  const liste = document.querySelector<HTMLElement>("[data-galerie]");
+  const dialog = document.querySelector<HTMLDialogElement>("[data-visionneuse]");
+  if (liste && dialog && typeof dialog.showModal === "function") {
+    const liens = [...liste.querySelectorAll<HTMLAnchorElement>("a")];
+    const img = dialog.querySelector("img")!;
+    const legende = dialog.querySelector("figcaption")!;
+    let courant = 0;
+    const afficher = (i: number) => {
+      courant = (i + liens.length) % liens.length;
+      const { pleine = "", largeur, hauteur, alt = "", position = "" } = liens[courant]!.dataset;
+      img.src = pleine;
+      img.width = Number(largeur);
+      img.height = Number(hauteur);
+      img.alt = alt;
+      legende.textContent = `${alt} — ${position}`;
+    };
+    liens.forEach((a, i) =>
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        afficher(i);
+        dialog.showModal();
+      }),
+    );
+    dialog.addEventListener("click", (e) => {
+      const cible = e.target as HTMLElement;
+      const action = cible.closest<HTMLElement>("[data-action]")?.dataset.action;
+      if (action === "fermer" || cible === dialog) dialog.close();
+      if (action === "prec") afficher(courant - 1);
+      if (action === "suiv") afficher(courant + 1);
+    });
+    dialog.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") afficher(courant - 1);
+      if (e.key === "ArrowRight") afficher(courant + 1);
+    });
+    dialog.addEventListener("close", () => liens[courant]?.focus());
+  }
+</script>

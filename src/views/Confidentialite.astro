@@ -1,0 +1,110 @@
+---
+import Base from "../layouts/Base.astro";
+import { chemin, t, type Langue } from "../lib/i18n";
+
+interface Props { lang: Langue }
+const { lang } = Astro.props;
+const d = t(lang);
+---
+<Base lang={lang} page="confidentialite" titre={d.confidentialite} description={d.confidentialite}>
+  <div class="conteneur prose">
+    {lang === "fr" ? (
+      <>
+        <h1>Politique de confidentialité</h1>
+        <p>
+          Ce site ne dépose aucun cookie publicitaire ou de mesure d'audience et n'utilise aucun traceur.
+          Il ne collecte des données personnelles que lorsque vous nous écrivez.
+        </p>
+
+        <h2>Responsable du traitement</h2>
+        <p>[À REMPLACER : nom et adresse de l'exploitant], joignable via la <a href={chemin(lang, "contact")}>page contact</a>.</p>
+
+        <h2>Données collectées et finalité</h2>
+        <p>
+          Via les formulaires de demande de séjour et de contact : nom, adresse e-mail, téléphone (facultatif),
+          dates et nombre de voyageurs, message. Ces données servent uniquement à répondre à votre demande
+          et, le cas échéant, à préparer votre séjour.
+        </p>
+        <p>Base légale : mesures précontractuelles prises à votre demande (article 6.1.b du RGPD).</p>
+
+        <h2>Durée de conservation</h2>
+        <p>Les demandes sont supprimées automatiquement trois ans après leur envoi.</p>
+
+        <h2>Destinataires et sous-traitants</h2>
+        <p>
+          Seuls les propriétaires des gîtes ont accès à vos messages. Le site est hébergé par Cloudflare
+          (hébergement, base de données, envoi des notifications par e-mail, protection anti-spam Turnstile).
+          Cloudflare peut traiter des données hors de l'Union européenne dans le cadre des garanties prévues
+          par le RGPD (Data Privacy Framework et clauses contractuelles types).
+        </p>
+
+        <h2>Protection anti-spam</h2>
+        <p>
+          Les formulaires utilisent Cloudflare Turnstile, qui vérifie que l'envoi provient d'une personne
+          sans cookie publicitaire ni suivi entre sites.
+        </p>
+
+        <h2>Carte</h2>
+        <p>
+          La carte de la page contact provient d'OpenStreetMap. Elle n'est chargée que si vous cliquez sur
+          « Afficher la carte » : votre navigateur contacte alors les serveurs d'OpenStreetMap.
+        </p>
+
+        <h2>Vos droits</h2>
+        <p>
+          Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, d'opposition et de
+          portabilité de vos données. Pour l'exercer, écrivez-nous via la <a href={chemin(lang, "contact")}>page contact</a>.
+          Vous pouvez également adresser une réclamation à la CNIL (<a href="https://www.cnil.fr" rel="noopener">www.cnil.fr</a>).
+        </p>
+      </>
+    ) : (
+      <>
+        <h1>Privacy policy</h1>
+        <p>
+          This site sets no advertising or analytics cookies and uses no trackers. It only collects personal
+          data when you write to us.
+        </p>
+
+        <h2>Data controller</h2>
+        <p>[TO BE REPLACED: name and address of the operator], reachable via the <a href={chemin(lang, "contact")}>contact page</a>.</p>
+
+        <h2>Data collected and purpose</h2>
+        <p>
+          Through the booking request and contact forms: name, email address, phone number (optional), dates
+          and number of guests, message. This data is only used to answer your request and, where relevant,
+          to prepare your stay.
+        </p>
+        <p>Legal basis: pre-contractual measures taken at your request (Article 6(1)(b) GDPR).</p>
+
+        <h2>Retention period</h2>
+        <p>Requests are automatically deleted three years after they are sent.</p>
+
+        <h2>Recipients and processors</h2>
+        <p>
+          Only the owners of the cottages can read your messages. The site is hosted by Cloudflare (hosting,
+          database, email notifications, Turnstile anti-spam). Cloudflare may process data outside the European
+          Union under the safeguards provided by the GDPR (Data Privacy Framework and standard contractual clauses).
+        </p>
+
+        <h2>Anti-spam protection</h2>
+        <p>
+          The forms use Cloudflare Turnstile, which checks that a person is sending the form, without advertising
+          cookies or cross-site tracking.
+        </p>
+
+        <h2>Map</h2>
+        <p>
+          The map on the contact page comes from OpenStreetMap. It is only loaded if you click “Show the map”:
+          your browser then connects to OpenStreetMap's servers.
+        </p>
+
+        <h2>Your rights</h2>
+        <p>
+          You have the right to access, rectify, erase, restrict, object to and port your data. To exercise these
+          rights, write to us via the <a href={chemin(lang, "contact")}>contact page</a>. You may also lodge a
+          complaint with the CNIL, the French data protection authority (<a href="https://www.cnil.fr" rel="noopener">www.cnil.fr</a>).
+        </p>
+      </>
+    )}
+  </div>
+</Base>

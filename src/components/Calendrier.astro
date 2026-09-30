@@ -1,0 +1,63 @@
+---
+// Calendrier de disponibilités sur 12 mois, rendu côté serveur (aucun JavaScript).
+// L'état n'est pas porté que par la couleur : motif hachuré, texte barré et libellé lisible par les lecteurs d'écran.
+import type { Mois } from "../lib/calendrier";
+import { t, type Langue } from "../lib/i18n";
+
+interface Props { mois: Mois[]; lang: Langue; visibles?: number }
+const { mois, lang, visibles = 3 } = Astro.props;
+const d = t(lang);
+const etiquette = { libre: d.libre, occupe: d.occupe, passe: d.passe };
+
+function semaines(m: Mois) {
+  const cases: (Mois["jours"][number] | null)[] = [...Array(m.decalage).fill(null), ...m.jours];
+  while (cases.length % 7) cases.push(null);
+  const lignes = [];
+  for (let i = 0; i < cases.length; i += 7) lignes.push(cases.slice(i, i + 7));
+  return lignes;
+}
+const groupes = [mois.slice(0, visibles), mois.slice(visibles)];
+---
+<ul class="legende">
+  <li><span class="j-libre" aria-hidden="true"></span>{d.libre}</li>
+  <li><span class="j-occupe" aria-hidden="true"></span>{d.occupe}</li>
+</ul>
+
+{groupes.map((liste, g) => {
+  const grille = (
+    <div class="calendriers">
+      {liste.map((m) => (
+        <div class="mois">
+          <table>
+            <caption>{d.mois(m.annee, m.mois)}</caption>
+            <thead>
+              <tr>{d.jours.map((j, i) => <th scope="col"><abbr title={d.joursLongs[i]}>{j}</abbr></th>)}</tr>
+            </thead>
+            <tbody>
+              {semaines(m).map((semaine) => (
+                <tr>
+                  {semaine.map((j) =>
+                    j ? (
+                      <td>
+                        <span class={`j-${j.etat}`}>
+                          {j.jour}<span class="visuellement-cache">, {etiquette[j.etat]}</span>
+                        </span>
+                      </td>
+                    ) : <td></td>,
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </div>
+  );
+  if (g === 0) return grille;
+  return liste.length > 0 && (
+    <details class="plus-de-mois">
+      <summary>{d.moisSuivants}</summary>
+      {grille}
+    </details>
+  );
+})}

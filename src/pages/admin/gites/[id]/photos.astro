@@ -1,0 +1,176 @@
+---
+import Admin from "../../../../layouts/Admin.astro";
+import { deplacerPhoto, giteEdition, majLegendesPhoto, photosGite, supprimerPhoto } from "../../../../lib/admin";
+import { apres } from "../../../../lib/admin-messages";
+import { parametres } from "../../../../lib/db";
+import { entier, texte } from "../../../../lib/formulaire";
+import { urlPhoto } from "../../../../lib/photos";
+import { env } from "cloudflare:workers";
+
+const id = Number(Astro.params.id);
+const ici = `/admin/gites/${id}/photos`;
+const gite = Number.isInteger(id) ? await giteEdition(id) : null;
+if (!gite) return Astro.rewrite("/404");
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const photoId = entier(f, "photo_id", 1, Number.MAX_SAFE_INTEGER);
+  const action = texte(f, "action", 20);
+  if (photoId === null) return apres(ici, { erreur: "invalide" });
+  if (action === "legendes") {
+    const altFr = texte(f, "alt_fr", 200);
+    if (!altFr) return apres(ici, { erreur: "alt" }, `#photo-${photoId}`);
+    await majLegendesPhoto(id, photoId, altFr, texte(f, "alt_en", 200));
+    return apres(ici, { ok: "enregistre" }, `#photo-${photoId}`);
+  }
+  if (action === "monter" || action === "descendre") {
+    await deplacerPhoto(id, photoId, action === "monter" ? -1 : 1);
+    return apres(ici, { ok: "enregistre" }, `#photo-${photoId}`);
+  }
+  if (action === "supprimer") {
+    const cles = await supprimerPhoto(id, photoId);
+    if (cles.length) await env.PHOTOS.delete(cles);
+    return apres(ici, { ok: "supprime" });
+  }
+  return apres(ici, { erreur: "invalide" });
+}
+
+const [photos, params] = await Promise.all([photosGite(id), parametres()]);
+const filigrane = params.filigrane_actif === "1" ? params.filigrane_texte || "" : "";
+---
+<Admin titre={`Photos : ${gite.textes.fr.nom}`} retour={{ href: `/admin/gites/${id}`, libelle: "Fiche du gîte" }}>
+  <section class="a-carte" aria-labelledby="t-ajout">
+    <h2 id="t-ajout">Ajouter des photos</h2>
+    <p class="a-aide">
+      Les photos sont réduites sur votre appareil avant l'envoi (1600 px de large, format WebP, avec une miniature de 400 px).
+      Les informations cachées (position GPS, appareil) sont retirées.
+      {filigrane ? <> Filigrane : « {filigrane} ».</> : <> Filigrane désactivé (voir <a href="/admin/reglages">Réglages</a>).</>}
+    </p>
+    <div data-envoi data-gite={id} data-filigrane={filigrane}>
+      <label for="fichiers">Choisir des photos</label>
+      <input type="file" id="fichiers" accept="image/*" multiple />
+      <div data-apercus></div>
+      <p class="a-progression" data-progression aria-live="polite"></p>
+      <button type="button" class="a-bouton" data-envoyer hidden>Envoyer les photos</button>
+    </div>
+    <noscript><p class="a-erreur">L'envoi de photos nécessite JavaScript.</p></noscript>
+  </section>
+
+  <h2>Photos du gîte ({photos.length})</h2>
+  <p class="a-aide">La première photo sert d'image principale. Le texte alternatif décrit la photo pour les personnes malvoyantes et pour Google.</p>
+  <ol class="a-photos">
+    {photos.map((p, i) => (
+      <li class="a-photo" id={`photo-${p.id}`}>
+        <img src={urlPhoto(p.cle_miniature)} width={p.largeur_min} height={p.hauteur_min} alt="" loading="lazy" />
+        <div>
+          <form method="post">
+            <input type="hidden" name="action" value="legendes" />
+            <input type="hidden" name="photo_id" value={p.id} />
+            <div class="a-champ"><label for={`fr-${p.id}`}>Texte alternatif (français)</label><input type="text" id={`fr-${p.id}`} name="alt_fr" value={p.alt_fr} maxlength="200" required /></div>
+            <div class="a-champ"><label for={`en-${p.id}`}>Texte alternatif (anglais)</label><input type="text" id={`en-${p.id}`} name="alt_en" value={p.alt_en} maxlength="200" /></div>
+            <button class="a-bouton petit">Enregistrer le texte</button>
+          </form>
+          <div class="a-actions">
+            <form method="post"><input type="hidden" name="action" value="monter" /><input type="hidden" name="photo_id" value={p.id} /><button class="a-bouton petit secondaire" disabled={i === 0} aria-label="Monter la photo">↑ Monter</button></form>
+            <form method="post"><input type="hidden" name="action" value="descendre" /><input type="hidden" name="photo_id" value={p.id} /><button class="a-bouton petit secondaire" disabled={i === photos.length - 1} aria-label="Descendre la photo">↓ Descendre</button></form>
+            <form method="post" data-confirmer="Supprimer cette photo ?"><input type="hidden" name="action" value="supprimer" /><input type="hidden" name="photo_id" value={p.id} /><button class="a-bouton petit danger">Supprimer</button></form>
+          </div>
+        </div>
+      </li>
+    ))}
+  </ol>
+</Admin>
+
+<script>
+  import { preparerPhoto, type PhotoPreparee } from "../../../../scripts/photos";
+
+  const zone = document.querySelector<HTMLElement>("[data-envoi]");
+  if (zone) {
+    const entree = zone.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const apercus = zone.querySelector<HTMLElement>("[data-apercus]")!;
+    const progression = zone.querySelector<HTMLElement>("[data-progression]")!;
+    const bouton = zone.querySelector<HTMLButtonElement>("[data-envoyer]")!;
+    const filigrane = zone.dataset.filigrane ?? "";
+    let preparees: { photo: PhotoPreparee; fr: HTMLInputElement; en: HTMLInputElement }[] = [];
+
+    entree.addEventListener("change", async () => {
+      apercus.replaceChildren();
+      preparees = [];
+      bouton.hidden = true;
+      const fichiers = [...(entree.files ?? [])];
+      for (const [i, fichier] of fichiers.entries()) {
+        progression.textContent = `Préparation ${i + 1} / ${fichiers.length}…`;
+        try {
+          const photo = await preparerPhoto(fichier, filigrane);
+          const bloc = document.createElement("div");
+          bloc.className = "a-carte";
+          const img = document.createElement("img");
+          img.src = URL.createObjectURL(photo.miniature);
+          img.alt = "";
+          img.width = photo.largeurMin;
+          img.height = photo.hauteurMin;
+          const champ = (lang: string, requis: boolean) => {
+            const div = document.createElement("div");
+            div.className = "a-champ";
+            const label = document.createElement("label");
+            const input = document.createElement("input");
+            input.type = "text";
+            input.maxLength = 200;
+            input.required = requis;
+            input.id = `nouv-${i}-${lang}`;
+            label.htmlFor = input.id;
+            label.textContent = `Texte alternatif (${lang === "fr" ? "français, obligatoire" : "anglais"})`;
+            div.appendChild(label);
+            div.appendChild(input);
+            return { div, input };
+          };
+          const fr = champ("fr", true);
+          const en = champ("en", false);
+          const info = document.createElement("p");
+          info.className = "a-aide";
+          info.textContent = `${fichier.name} → ${photo.largeur} × ${photo.hauteur}, ${Math.round(photo.pleine.size / 1024)} Ko (${photo.pleine.type.replace("image/", "")})`;
+          for (const el of [img, info, fr.div, en.div]) bloc.appendChild(el);
+          apercus.appendChild(bloc);
+          preparees.push({ photo, fr: fr.input, en: en.input });
+        } catch {
+          const p = document.createElement("p");
+          p.className = "a-erreur";
+          p.textContent = `${fichier.name} : format non pris en charge.`;
+          apercus.appendChild(p);
+        }
+      }
+      progression.textContent = preparees.length ? `${preparees.length} photo(s) prête(s). Ajoutez un texte alternatif puis envoyez.` : "";
+      bouton.hidden = preparees.length === 0;
+    });
+
+    bouton.addEventListener("click", async () => {
+      const manquant = preparees.find((p) => !p.fr.value.trim());
+      if (manquant) {
+        manquant.fr.focus();
+        progression.textContent = "Le texte alternatif en français est obligatoire pour chaque photo.";
+        return;
+      }
+      bouton.disabled = true;
+      for (const [i, { photo, fr, en }] of preparees.entries()) {
+        progression.textContent = `Envoi ${i + 1} / ${preparees.length}…`;
+        const corps = new FormData();
+        corps.append("gite_id", zone.dataset.gite ?? "");
+        corps.append("alt_fr", fr.value.trim());
+        corps.append("alt_en", en.value.trim());
+        corps.append("pleine", photo.pleine);
+        corps.append("miniature", photo.miniature);
+        corps.append("largeur", String(photo.largeur));
+        corps.append("hauteur", String(photo.hauteur));
+        corps.append("largeur_min", String(photo.largeurMin));
+        corps.append("hauteur_min", String(photo.hauteurMin));
+        const r = await fetch("/api/admin/photos", { method: "POST", body: corps });
+        if (!r.ok) {
+          progression.textContent = `Échec de l'envoi de la photo ${i + 1}. Réessayez.`;
+          bouton.disabled = false;
+          return;
+        }
+      }
+      location.href = `${location.pathname}?ok=photo`;
+    });
+  }
+</script>

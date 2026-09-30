@@ -1,0 +1,119 @@
+---
+import Admin from "../../layouts/Admin.astro";
+import {
+  ajouterPeriode,
+  enregistrerTarifs,
+  estSaison,
+  listeGites,
+  listePeriodes,
+  listeTarifs,
+  supprimerPeriode,
+  type TarifAdmin,
+} from "../../lib/admin";
+import { dateCourte } from "../../lib/admin-format";
+import { apres } from "../../lib/admin-messages";
+import { aujourdhui, estDateIso } from "../../lib/dates";
+import { SAISONS } from "../../lib/db";
+import { entier, texte } from "../../lib/formulaire";
+
+const ici = "/admin/tarifs";
+const gites = await listeGites();
+const NOMS_SAISON = { basse: "Basse", moyenne: "Moyenne", haute: "Haute" } as const;
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const action = texte(f, "action", 30);
+
+  if (action === "tarifs") {
+    const tarifs: TarifAdmin[] = [];
+    for (const g of gites) {
+      for (const saison of SAISONS) {
+        const prix = entier(f, `prix_${g.id}_${saison}`, 0, 100000);
+        const min = entier(f, `min_${g.id}_${saison}`, 1, 60);
+        if (prix === null && min === null) continue;
+        if (prix === null || min === null) return apres(ici, { erreur: "invalide" });
+        tarifs.push({ gite_id: g.id, saison, prix_nuit: prix, sejour_min: min });
+      }
+    }
+    await enregistrerTarifs(tarifs);
+    return apres(ici, { ok: "enregistre" });
+  }
+  if (action === "ajouter-periode") {
+    const saison = texte(f, "saison", 10);
+    const debut = texte(f, "debut", 10);
+    const fin = texte(f, "fin", 10);
+    if (!estSaison(saison)) return apres(ici, { erreur: "invalide" }, "#periodes");
+    if (!estDateIso(debut) || !estDateIso(fin) || fin < debut) return apres(ici, { erreur: "dates" }, "#periodes");
+    await ajouterPeriode(saison, debut, fin);
+    return apres(ici, { ok: "ajoute" }, "#periodes");
+  }
+  if (action === "supprimer-periode") {
+    const id = entier(f, "cible", 1, Number.MAX_SAFE_INTEGER);
+    if (id !== null) await supprimerPeriode(id);
+    return apres(ici, { ok: "supprime" }, "#periodes");
+  }
+  return apres(ici, { erreur: "invalide" });
+}
+
+const [tarifs, periodes] = await Promise.all([listeTarifs(), listePeriodes()]);
+const tarif = (giteId: number, saison: string) => tarifs.find((t) => t.gite_id === giteId && t.saison === saison);
+const jour = aujourdhui();
+---
+<Admin titre="Tarifs et saisons">
+  <form method="post">
+    <input type="hidden" name="action" value="tarifs" />
+    <h2>Prix par nuit et séjour minimum</h2>
+    <p class="a-aide">En euros, par nuit. Séjour minimum en nuits. Les frais de ménage et la caution se règlent dans la fiche de chaque gîte.</p>
+    {gites.map((g) => (
+      <fieldset>
+        <legend>{g.nom}</legend>
+        <div class="a-defile">
+          <table>
+            <thead><tr><th scope="col">Saison</th><th scope="col">Prix / nuit (€)</th><th scope="col">Minimum (nuits)</th></tr></thead>
+            <tbody>
+              {SAISONS.map((s) => (
+                <tr>
+                  <th scope="row">{NOMS_SAISON[s]}</th>
+                  <td><input type="number" name={`prix_${g.id}_${s}`} min="0" inputmode="numeric" value={tarif(g.id, s)?.prix_nuit ?? ""} aria-label={`${g.nom}, ${NOMS_SAISON[s]} saison : prix par nuit`} /></td>
+                  <td><input type="number" name={`min_${g.id}_${s}`} min="1" max="60" inputmode="numeric" value={tarif(g.id, s)?.sejour_min ?? ""} aria-label={`${g.nom}, ${NOMS_SAISON[s]} saison : séjour minimum`} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </fieldset>
+    ))}
+    <div class="a-enregistrer"><button class="a-bouton">Enregistrer les tarifs</button></div>
+  </form>
+
+  <section id="periodes" aria-labelledby="t-periodes">
+    <h2 id="t-periodes">Périodes de saison</h2>
+    <p class="a-aide">Communes aux trois gîtes. En dehors de ces périodes, c'est la basse saison qui s'applique. Dates incluses.</p>
+    <ul class="a-liste">
+      {periodes.map((p) => (
+        <li class="a-carte">
+          <strong>{NOMS_SAISON[p.saison]} saison</strong> : du {dateCourte(p.debut)} au {dateCourte(p.fin)}
+          {p.fin < jour && <span class="a-badge"> passée</span>}
+          <form method="post" class="a-actions" data-confirmer="Supprimer cette période ?">
+            <input type="hidden" name="action" value="supprimer-periode" />
+            <input type="hidden" name="cible" value={p.id} />
+            <button class="a-bouton petit danger">Supprimer</button>
+          </form>
+        </li>
+      ))}
+    </ul>
+    <form method="post" class="a-carte">
+      <h3>Ajouter une période</h3>
+      <input type="hidden" name="action" value="ajouter-periode" />
+      <div class="a-grille">
+        <div class="a-champ">
+          <label for="saison">Saison</label>
+          <select id="saison" name="saison"><option value="moyenne">Moyenne</option><option value="haute">Haute</option><option value="basse">Basse</option></select>
+        </div>
+        <div class="a-champ"><label for="p-debut">Du</label><input type="date" id="p-debut" name="debut" required /></div>
+        <div class="a-champ"><label for="p-fin">Au (inclus)</label><input type="date" id="p-fin" name="fin" required /></div>
+      </div>
+      <button class="a-bouton">Ajouter</button>
+    </form>
+  </section>
+</Admin>

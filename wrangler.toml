@@ -1,0 +1,36 @@
+# Configuration du Worker unique : site public, admin, API et synchro planifiée.
+# Aucun secret ici : voir README (section « Secrets ») et `.dev.vars.example`.
+
+name = "domaine-de-ganzeville"
+main = "./src/worker.ts"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[vars]
+SITE_URL = "https://domainedeganzeville.fr"
+# Base publique des photos (domaine personnalisé du bucket R2).
+IMG_BASE_URL = "https://img.domainedeganzeville.fr"
+# Adresse d'expédition des notifications (domaine avec Email Routing actif).
+EMAIL_EXPEDITEUR = "demandes@domainedeganzeville.fr"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ganzeville"
+# [À REMPLACER] par l'identifiant renvoyé par `wrangler d1 create ganzeville`.
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "ganzeville-photos"
+
+# Envoi des demandes de séjour aux propriétaires (adresses vérifiées dans Email Routing).
+[[send_email]]
+name = "EMAIL"
+
+# Tâches planifiées : synchro des disponibilités et purge RGPD.
+[triggers]
+crons = ["*/20 * * * *"]

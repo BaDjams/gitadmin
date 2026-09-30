@@ -1,0 +1,73 @@
+---
+import Base from "../layouts/Base.astro";
+import FormulaireDemande from "../components/FormulaireDemande.astro";
+import Paragraphes from "../components/Paragraphes.astro";
+import { listerGites, textes } from "../lib/db";
+import { chemin, t, type Langue } from "../lib/i18n";
+import { LIEU } from "../lib/lieu";
+
+interface Props { lang: Langue }
+const { lang } = Astro.props;
+const d = t(lang);
+const [gites, tx] = await Promise.all([listerGites(lang), textes(lang)]);
+
+// Carte OpenStreetMap chargée uniquement à la demande (aucune requête tierce sans action du visiteur).
+const delta = 0.02;
+const bbox = [LIEU.longitude - delta, LIEU.latitude - delta / 2, LIEU.longitude + delta, LIEU.latitude + delta / 2].join(",");
+const carteEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${LIEU.latitude},${LIEU.longitude}`;
+const carteLien = `https://www.openstreetmap.org/?mlat=${LIEU.latitude}&mlon=${LIEU.longitude}#map=14/${LIEU.latitude}/${LIEU.longitude}`;
+---
+<Base lang={lang} page="contact" titre={d.navContact} description={tx["contact.intro"] ?? d.contactTitre}>
+  <div class="conteneur">
+    <h1>{d.navContact}</h1>
+    {tx["contact.intro"] && <p class="accroche">{tx["contact.intro"]}</p>}
+
+    <div class="deux-colonnes">
+      <div>
+        <h2>{d.coordonnees}</h2>
+        {tx["contact.adresse"] && (
+          <>
+            <h3>{d.adresse}</h3>
+            <address><Paragraphes texte={tx["contact.adresse"]} /></address>
+          </>
+        )}
+        {tx["contact.telephone"] && <p>{d.tel}{d.deuxPoints}{tx["contact.telephone"]}</p>}
+
+        {tx["contact.acces"] && (
+          <>
+            <h3>{d.acces}</h3>
+            <div class="prose"><Paragraphes texte={tx["contact.acces"]} /></div>
+          </>
+        )}
+
+        <h3>{d.carte}</h3>
+        <div class="carte-osm" data-carte={carteEmbed}>
+          <div>
+            <p><button type="button" class="bouton secondaire" data-afficher-carte>{d.afficherCarte}</button></p>
+            <p class="aide">{d.carteInfo}</p>
+            <p class="aide"><a href={carteLien} rel="noopener">{d.voirSurOsm}</a></p>
+          </div>
+        </div>
+      </div>
+
+      <FormulaireDemande
+        lang={lang}
+        mode="contact"
+        gites={gites.map((g) => ({ id: g.id, nom: g.nom }))}
+        retour={chemin(lang, "contact")}
+      />
+    </div>
+  </div>
+</Base>
+
+<script>
+  document.querySelector("[data-afficher-carte]")?.addEventListener("click", (e) => {
+    const conteneur = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-carte]");
+    if (!conteneur) return;
+    const iframe = document.createElement("iframe");
+    iframe.src = conteneur.dataset.carte ?? "";
+    iframe.title = "OpenStreetMap";
+    iframe.loading = "lazy";
+    conteneur.replaceChildren(iframe);
+  });
+</script>

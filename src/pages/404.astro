@@ -1,0 +1,23 @@
+---
+import Base from "../layouts/Base.astro";
+import { chemin } from "../lib/i18n";
+
+// Page introuvable : bilingue, la langue suit l'URL demandée.
+const lang = Astro.url.pathname.startsWith("/en") ? "en" : "fr";
+Astro.response.status = 404;
+---
+<Base lang={lang} page="accueil" titre="404" description="404" indexable={false}>
+  <div class="conteneur prose">
+    {lang === "fr" ? (
+      <>
+        <h1>Page introuvable</h1>
+        <p>Cette page n'existe pas ou a été déplacée. <a href={chemin("fr", "accueil")}>Retour à l'accueil</a>.</p>
+      </>
+    ) : (
+      <>
+        <h1>Page not found</h1>
+        <p>This page does not exist or has moved. <a href={chemin("en", "accueil")}>Back to the home page</a>.</p>
+      </>
+    )}
+  </div>
+</Base>

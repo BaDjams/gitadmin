@@ -1,0 +1,115 @@
+---
+// Formulaire de demande de séjour (fiche gîte) ou de contact (page contact).
+// Fonctionne sans JavaScript (POST classique puis redirection) ; Turnstile protège du spam.
+import { env } from "cloudflare:workers";
+import { chemin, t, type Langue } from "../lib/i18n";
+import { aujourdhui } from "../lib/dates";
+
+interface Props {
+  lang: Langue;
+  mode: "sejour" | "contact";
+  /** Gîte concerné (fiche gîte) ou liste proposée (contact). */
+  gite?: { id: number; nom: string };
+  gites?: { id: number; nom: string }[];
+  retour: string;
+}
+const { lang, mode, gite, gites = [], retour } = Astro.props;
+const d = t(lang);
+const statut = Astro.url.searchParams.get("demande");
+const ancre = mode === "sejour" ? "demande" : "ecrire";
+const min = aujourdhui();
+const id = (nom: string) => `${ancre}-${nom}`;
+---
+<section class="formulaire" id={ancre} aria-labelledby={id("titre")}>
+  <h2 id={id("titre")}>{mode === "sejour" ? d.demandeTitre : d.contactTitre}</h2>
+  {mode === "sejour" && <p>{d.demandeIntro}</p>}
+
+  {statut === "ok" && <p class="message-ok" role="status">{d.merci}</p>}
+  {statut === "erreur" && <p class="message-erreur" role="alert">{d.erreurs.general}</p>}
+  {statut === "captcha" && <p class="message-erreur" role="alert">{d.erreurs.captcha}</p>}
+
+  <form method="post" action="/api/demande">
+    <input type="hidden" name="langue" value={lang} />
+    <input type="hidden" name="retour" value={retour} />
+    {gite && <input type="hidden" name="gite_id" value={gite.id} />}
+
+    <div class="champs">
+      {mode === "contact" && gites.length > 0 && (
+        <div class="champ">
+          <label for={id("gite")}>{d.gite} <span class="aide">({d.facultatif})</span></label>
+          <select id={id("gite")} name="gite_id">
+            <option value="">{d.giteIndifferent}</option>
+            {gites.map((g) => <option value={g.id}>{g.nom}</option>)}
+          </select>
+        </div>
+      )}
+
+      {mode === "sejour" && (
+        <>
+          <div class="champ demi">
+            <label for={id("arrivee")}>{d.arrivee}</label>
+            <input type="date" id={id("arrivee")} name="arrivee" min={min} required />
+          </div>
+          <div class="champ demi">
+            <label for={id("depart")}>{d.depart}</label>
+            <input type="date" id={id("depart")} name="depart" min={min} required />
+          </div>
+          <div class="champ demi">
+            <label for={id("adultes")}>{d.adultes}</label>
+            <input type="number" id={id("adultes")} name="adultes" min="1" max="20" value="2" inputmode="numeric" required />
+          </div>
+          <div class="champ demi">
+            <label for={id("enfants")}>{d.enfants}</label>
+            <input type="number" id={id("enfants")} name="enfants" min="0" max="20" value="0" inputmode="numeric" required />
+          </div>
+        </>
+      )}
+
+      <div class="champ">
+        <label for={id("nom")}>{d.nom}</label>
+        <input type="text" id={id("nom")} name="nom" autocomplete="name" maxlength="120" required />
+      </div>
+      <div class="champ demi">
+        <label for={id("email")}>{d.email}</label>
+        <input type="email" id={id("email")} name="email" autocomplete="email" maxlength="200" required />
+      </div>
+      <div class="champ demi">
+        <label for={id("tel")}>{d.telephone}</label>
+        <input type="tel" id={id("tel")} name="telephone" autocomplete="tel" maxlength="40" />
+      </div>
+      <div class="champ">
+        <label for={id("message")}>{mode === "sejour" ? d.messageFacultatif : d.message}</label>
+        <textarea id={id("message")} name="message" maxlength="4000" required={mode === "contact"}></textarea>
+      </div>
+
+      <!-- Piège à robots : champ invisible qui doit rester vide. -->
+      <div class="piege" aria-hidden="true">
+        <label for={id("site")}>Site web</label>
+        <input type="text" id={id("site")} name="site_web" tabindex="-1" autocomplete="off" />
+      </div>
+
+      <div class="champ">
+        <div class="cf-turnstile" data-sitekey={env.TURNSTILE_SITE_KEY} data-language={lang}></div>
+      </div>
+    </div>
+
+    <p class="aide">{d.champsObligatoires}</p>
+    <p class="aide"><a href={chemin(lang, "confidentialite")}>{d.consentement}</a></p>
+    <p><button type="submit" class="bouton">{mode === "sejour" ? d.envoyer : d.envoyerMessage}</button></p>
+  </form>
+</section>
+
+<script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+<script>
+  // Le départ doit suivre l'arrivée.
+  const arrivee = document.querySelector<HTMLInputElement>('input[name="arrivee"]');
+  const depart = document.querySelector<HTMLInputElement>('input[name="depart"]');
+  arrivee?.addEventListener("change", () => {
+    if (!depart || !arrivee.value) return;
+    const lendemain = new Date(`${arrivee.value}T00:00:00Z`);
+    lendemain.setUTCDate(lendemain.getUTCDate() + 1);
+    depart.min = lendemain.toISOString().slice(0, 10);
+    if (depart.value && depart.value < depart.min) depart.value = "";
+  });
+</script>

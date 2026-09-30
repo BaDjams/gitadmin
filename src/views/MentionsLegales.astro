@@ -1,0 +1,81 @@
+---
+import Base from "../layouts/Base.astro";
+import { chemin, t, type Langue } from "../lib/i18n";
+
+interface Props { lang: Langue }
+const { lang } = Astro.props;
+const d = t(lang);
+---
+<Base lang={lang} page="mentions" titre={d.mentionsLegales} description={d.mentionsLegales}>
+  <div class="conteneur prose">
+    <h1>{d.mentionsLegales}</h1>
+    {lang === "fr" ? (
+      <>
+        <h2>Éditeur du site</h2>
+        <p>
+          [À REMPLACER : nom et prénom de l'exploitant, ou dénomination sociale]<br />
+          [À REMPLACER : adresse postale], 76400 Ganzeville<br />
+          Contact : via la <a href={chemin(lang, "contact")}>page contact</a><br />
+          [À REMPLACER le cas échéant : numéro SIRET]<br />
+          [À REMPLACER : numéro d'enregistrement du meublé de tourisme délivré par la mairie, un par gîte]
+        </p>
+        <p>Directeur ou directrice de la publication : [À REMPLACER].</p>
+
+        <h2>Hébergement</h2>
+        <p>
+          Cloudflare, Inc., 101 Townsend St, San Francisco, CA 94107, États-Unis.<br />
+          <a href="https://www.cloudflare.com" rel="noopener">www.cloudflare.com</a>
+        </p>
+
+        <h2>Propriété intellectuelle</h2>
+        <p>
+          Les textes et photographies de ce site sont la propriété de l'éditeur, sauf mention contraire.
+          Toute reproduction sans autorisation est interdite.
+        </p>
+
+        <h2>Disponibilités et tarifs</h2>
+        <p>
+          Les disponibilités affichées sont indicatives et mises à jour régulièrement. Les demandes envoyées
+          depuis ce site ne constituent pas une réservation ferme : la réservation n'est acquise qu'après
+          confirmation écrite de notre part.
+        </p>
+
+        <h2>Données personnelles</h2>
+        <p>Voir notre <a href={chemin(lang, "confidentialite")}>politique de confidentialité</a>.</p>
+      </>
+    ) : (
+      <>
+        <h2>Publisher</h2>
+        <p>
+          [TO BE REPLACED: name of the operator or company name]<br />
+          [TO BE REPLACED: postal address], 76400 Ganzeville, France<br />
+          Contact: via the <a href={chemin(lang, "contact")}>contact page</a><br />
+          [TO BE REPLACED if applicable: SIRET number]<br />
+          [TO BE REPLACED: holiday rental registration number issued by the town hall, one per cottage]
+        </p>
+        <p>Publication director: [TO BE REPLACED].</p>
+
+        <h2>Hosting</h2>
+        <p>
+          Cloudflare, Inc., 101 Townsend St, San Francisco, CA 94107, USA.<br />
+          <a href="https://www.cloudflare.com" rel="noopener">www.cloudflare.com</a>
+        </p>
+
+        <h2>Intellectual property</h2>
+        <p>
+          The texts and photographs on this site belong to the publisher unless otherwise stated.
+          Any reproduction without permission is prohibited.
+        </p>
+
+        <h2>Availability and prices</h2>
+        <p>
+          The availability shown is indicative and updated regularly. Requests sent from this site are not
+          a confirmed booking: a booking is only final once we have confirmed it in writing.
+        </p>
+
+        <h2>Personal data</h2>
+        <p>See our <a href={chemin(lang, "confidentialite")}>privacy policy</a>.</p>
+      </>
+    )}
+  </div>
+</Base>

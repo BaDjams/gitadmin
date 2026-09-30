@@ -1,0 +1,74 @@
+---
+import Admin from "../../../layouts/Admin.astro";
+import { changerStatutDemande, demande as lireDemande, STATUTS_DEMANDE, supprimerDemande, type StatutDemande } from "../../../lib/admin";
+import { dateHeure, periode } from "../../../lib/admin-format";
+import { apres } from "../../../lib/admin-messages";
+import { texte } from "../../../lib/formulaire";
+
+const id = Number(Astro.params.id);
+const ici = `/admin/demandes/${id}`;
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const action = texte(f, "action", 20);
+  if (action === "supprimer") {
+    await supprimerDemande(id);
+    return apres("/admin/demandes", { ok: "supprime" });
+  }
+  const statut = texte(f, "statut", 20) as StatutDemande;
+  if (action === "statut" && STATUTS_DEMANDE.includes(statut)) {
+    await changerStatutDemande(id, statut);
+    return apres(ici, { ok: "enregistre" });
+  }
+  return apres(ici, { erreur: "invalide" });
+}
+
+const d = Number.isInteger(id) ? await lireDemande(id) : null;
+if (!d) return Astro.rewrite("/404");
+
+// Brouillon de réponse dans la langue du voyageur, ouvert dans la messagerie du téléphone ou de l'ordinateur.
+const objet = d.langue === "en"
+  ? `Your enquiry${d.gite ? ` – ${d.gite}` : ""} – Domaine de Ganzeville`
+  : `Votre demande${d.gite ? ` – ${d.gite}` : ""} – Domaine de Ganzeville`;
+const corps = d.langue === "en" ? `Hello ${d.nom},\n\nThank you for your message.\n\n` : `Bonjour ${d.nom},\n\nMerci pour votre message.\n\n`;
+const mailto = `mailto:${encodeURIComponent(d.email)}?subject=${encodeURIComponent(objet)}&body=${encodeURIComponent(corps)}`;
+const LIBELLES: Record<StatutDemande, string> = { nouvelle: "Nouvelle", traitee: "Traitée", archivee: "Archivée" };
+---
+<Admin titre={`Demande de ${d.nom}`} retour={{ href: "/admin/demandes", libelle: "Toutes les demandes" }}>
+  <div class="a-carte">
+    <dl class="a-details">
+      <dt>Gîte</dt><dd>{d.gite ?? "Message de contact"}</dd>
+      {d.arrivee && <><dt>Séjour</dt><dd>{periode(d.arrivee, d.depart)}</dd></>}
+      {d.adultes != null && <><dt>Voyageurs</dt><dd>{d.adultes} adulte{d.adultes > 1 ? "s" : ""}, {d.enfants ?? 0} enfant{(d.enfants ?? 0) > 1 ? "s" : ""}</dd></>}
+      <dt>E-mail</dt><dd><a href={`mailto:${d.email}`}>{d.email}</a></dd>
+      {d.telephone && <><dt>Téléphone</dt><dd><a href={`tel:${d.telephone.replace(/[^\d+]/g, "")}`}>{d.telephone}</a></dd></>}
+      <dt>Langue</dt><dd>{d.langue === "en" ? "Anglais" : "Français"}</dd>
+      <dt>Reçue le</dt><dd>{dateHeure(d.cree_le)}</dd>
+      <dt>Statut</dt><dd>{LIBELLES[d.statut]}{!d.email_envoye && <> · <span class="a-badge alerte">notification e-mail non envoyée</span></>}</dd>
+    </dl>
+    {d.message && <p class="a-message">{d.message}</p>}
+
+    <div class="a-actions">
+      <a class="a-bouton" href={mailto}>Répondre par e-mail</a>
+      {d.telephone && <a class="a-bouton secondaire" href={`tel:${d.telephone.replace(/[^\d+]/g, "")}`}>Appeler</a>}
+    </div>
+  </div>
+
+  <div class="a-carte">
+    <h2>Suivi</h2>
+    <div class="a-actions">
+      {STATUTS_DEMANDE.filter((s) => s !== d.statut).map((s) => (
+        <form method="post">
+          <input type="hidden" name="action" value="statut" />
+          <input type="hidden" name="statut" value={s} />
+          <button class="a-bouton secondaire petit">Marquer « {LIBELLES[s].toLowerCase()} »</button>
+        </form>
+      ))}
+      <form method="post" data-confirmer="Supprimer définitivement cette demande ?">
+        <input type="hidden" name="action" value="supprimer" />
+        <button class="a-bouton danger petit">Supprimer</button>
+      </form>
+    </div>
+    <p class="a-aide">Les demandes sont de toute façon supprimées automatiquement au bout de 3 ans.</p>
+  </div>
+</Admin>

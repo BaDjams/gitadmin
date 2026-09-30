@@ -1,0 +1,168 @@
+---
+import Admin from "../../../../layouts/Admin.astro";
+import {
+  ajouterBlocage,
+  ajouterSource,
+  basculerSource,
+  blocagesGite,
+  giteEdition,
+  remplacerUrlSource,
+  sourcesGite,
+  supprimerBlocage,
+  supprimerSource,
+} from "../../../../lib/admin";
+import { dateCourte, dateHeure } from "../../../../lib/admin-format";
+import { apres } from "../../../../lib/admin-messages";
+import { ajouterJours, aujourdhui, estDateIso } from "../../../../lib/dates";
+import { entier, texte } from "../../../../lib/formulaire";
+
+const id = Number(Astro.params.id);
+const ici = `/admin/gites/${id}/calendrier`;
+const gite = Number.isInteger(id) ? await giteEdition(id) : null;
+if (!gite) return Astro.rewrite("/404");
+
+const urlValide = (u: string) => {
+  try {
+    return new URL(u).protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const action = texte(f, "action", 30);
+  const cible = entier(f, "cible", 1, Number.MAX_SAFE_INTEGER);
+
+  if (action === "ajouter-source") {
+    const libelle = texte(f, "libelle", 60);
+    const url = texte(f, "url", 2000);
+    if (!libelle) return apres(ici, { erreur: "invalide" });
+    if (!urlValide(url)) return apres(ici, { erreur: "url" });
+    await ajouterSource(id, libelle, url);
+    return apres(ici, { ok: "ajoute" });
+  }
+  if (action === "ajouter-blocage") {
+    const debut = texte(f, "debut", 10);
+    const dernier = texte(f, "dernier", 10);
+    if (!estDateIso(debut) || !estDateIso(dernier) || dernier < debut) return apres(ici, { erreur: "dates" }, "#blocages");
+    // Le dernier jour saisi est inclus : la fin stockée est le lendemain (convention « départ »).
+    await ajouterBlocage(id, debut, ajouterJours(dernier, 1), texte(f, "motif", 120));
+    return apres(ici, { ok: "ajoute" }, "#blocages");
+  }
+  if (cible === null) return apres(ici, { erreur: "invalide" });
+  if (action === "remplacer-url") {
+    const url = texte(f, "url", 2000);
+    if (!urlValide(url)) return apres(ici, { erreur: "url" });
+    await remplacerUrlSource(id, cible, url);
+    return apres(ici, { ok: "enregistre" });
+  }
+  if (action === "basculer-source") {
+    await basculerSource(id, cible);
+    return apres(ici, { ok: "enregistre" });
+  }
+  if (action === "supprimer-source") {
+    await supprimerSource(id, cible);
+    return apres(ici, { ok: "supprime" });
+  }
+  if (action === "supprimer-blocage") {
+    await supprimerBlocage(id, cible);
+    return apres(ici, { ok: "supprime" }, "#blocages");
+  }
+  return apres(ici, { erreur: "invalide" });
+}
+
+const jour = aujourdhui();
+const [sources, blocages] = await Promise.all([sourcesGite(id), blocagesGite(id, jour)]);
+const STATUTS = { jamais: "pas encore synchronisé", ok: "à jour", erreur: "en échec" } as const;
+---
+<Admin titre={`Calendrier : ${gite.textes.fr.nom}`} retour={{ href: `/admin/gites/${id}`, libelle: "Fiche du gîte" }}>
+  <section aria-labelledby="t-sources">
+    <h2 id="t-sources">Calendriers des plateformes</h2>
+    <p class="a-aide">
+      Collez l'adresse d'export iCal fournie par Airbnb, Booking.com ou Vrbo. Elle contient une clé secrète :
+      elle est conservée sur le serveur et n'est plus jamais réaffichée. Une date est occupée si elle l'est sur au moins un calendrier.
+    </p>
+
+    {sources.length === 0 && <p>Aucun calendrier relié pour l'instant.</p>}
+    <ul class="a-liste">
+      {sources.map((s) => (
+        <li class="a-carte">
+          <h3>
+            {s.libelle}{" "}
+            <span class={`a-badge ${s.statut === "erreur" ? "alerte" : ""}`}>{s.actif ? STATUTS[s.statut] : "désactivé"}</span>
+          </h3>
+          <p class="a-meta">
+            {s.url_masquee} · {s.nb_periodes} période{s.nb_periodes > 1 ? "s" : ""} importée{s.nb_periodes > 1 ? "s" : ""}<br />
+            Dernière tentative : {dateHeure(s.derniere_synchro)} · dernier succès : {dateHeure(s.dernier_succes)}
+          </p>
+          {s.statut === "erreur" && s.derniere_erreur && (
+            <p class="a-erreur">Erreur : {s.derniere_erreur}. Les dernières disponibilités valides restent affichées.</p>
+          )}
+          <details>
+            <summary>Remplacer l'adresse</summary>
+            <form method="post">
+              <input type="hidden" name="action" value="remplacer-url" />
+              <input type="hidden" name="cible" value={s.id} />
+              <div class="a-champ"><label for={`url-${s.id}`}>Nouvelle adresse iCal</label><input type="url" id={`url-${s.id}`} name="url" required placeholder="https://…" autocomplete="off" /></div>
+              <button class="a-bouton petit">Remplacer</button>
+            </form>
+          </details>
+          <div class="a-actions">
+            <form method="post">
+              <input type="hidden" name="action" value="basculer-source" />
+              <input type="hidden" name="cible" value={s.id} />
+              <button class="a-bouton petit secondaire">{s.actif ? "Désactiver" : "Réactiver"}</button>
+            </form>
+            <form method="post" data-confirmer={`Retirer le calendrier « ${s.libelle} » et ses périodes importées ?`}>
+              <input type="hidden" name="action" value="supprimer-source" />
+              <input type="hidden" name="cible" value={s.id} />
+              <button class="a-bouton petit danger">Retirer</button>
+            </form>
+          </div>
+        </li>
+      ))}
+    </ul>
+
+    <form method="post" class="a-carte">
+      <h3>Relier un calendrier</h3>
+      <input type="hidden" name="action" value="ajouter-source" />
+      <div class="a-champ"><label for="libelle">Plateforme</label><input type="text" id="libelle" name="libelle" list="plateformes" maxlength="60" required /></div>
+      <datalist id="plateformes"><option value="Airbnb" /><option value="Booking.com" /><option value="Vrbo" /><option value="Gîtes de France" /></datalist>
+      <div class="a-champ"><label for="url">Adresse d'export iCal</label><input type="url" id="url" name="url" required placeholder="https://…" autocomplete="off" /></div>
+      <button class="a-bouton">Ajouter</button>
+    </form>
+  </section>
+
+  <section id="blocages" aria-labelledby="t-blocages">
+    <h2 id="t-blocages">Dates bloquées à la main</h2>
+    <p class="a-aide">Pour la famille, des travaux… Ces dates apparaissent comme occupées sur le site. Le motif n'est visible qu'ici.</p>
+
+    {blocages.length > 0 && (
+      <ul class="a-liste">
+        {blocages.map((b) => (
+          <li class="a-carte">
+            <strong>Du {dateCourte(b.debut)} au {dateCourte(ajouterJours(b.fin, -1))} inclus</strong>
+            {b.motif && <span class="a-meta"> · {b.motif}</span>}
+            <form method="post" class="a-actions" data-confirmer="Débloquer ces dates ?">
+              <input type="hidden" name="action" value="supprimer-blocage" />
+              <input type="hidden" name="cible" value={b.id} />
+              <button class="a-bouton petit danger">Débloquer</button>
+            </form>
+          </li>
+        ))}
+      </ul>
+    )}
+
+    <form method="post" class="a-carte">
+      <h3>Bloquer des dates</h3>
+      <input type="hidden" name="action" value="ajouter-blocage" />
+      <div class="a-grille">
+        <div class="a-champ"><label for="debut">Premier jour bloqué</label><input type="date" id="debut" name="debut" min={jour} required /></div>
+        <div class="a-champ"><label for="dernier">Dernier jour bloqué</label><input type="date" id="dernier" name="dernier" min={jour} required /></div>
+      </div>
+      <div class="a-champ"><label for="motif">Motif (facultatif)</label><input type="text" id="motif" name="motif" maxlength="120" /></div>
+      <button class="a-bouton">Bloquer</button>
+    </form>
+  </section>
+</Admin>

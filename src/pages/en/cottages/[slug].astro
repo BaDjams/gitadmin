@@ -1,0 +1,8 @@
+---
+import FicheGite from "../../../views/FicheGite.astro";
+import { giteParSlug } from "../../../lib/db";
+
+const gite = await giteParSlug(Astro.params.slug ?? "", "en");
+if (!gite) return Astro.rewrite("/404");
+---
+<FicheGite lang="en" gite={gite} />
